@@ -11,11 +11,377 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#0f172a">
 <style>
-  body { font-family: system-ui; background: #0b1021; color: #fff; }
+  :root{ --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --line:#1f2937; }
+  *{box-sizing:border-box}
+  body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial; background:linear-gradient(180deg,#0b1021,#0a0f1d); color:var(--text)}
+  header{padding:24px 20px 8px; text-align:center}
+  header h1{margin:0; font-size:1.6rem}
+  header p{margin:.25rem 0 0; color:var(--muted)}
+  .container{max-width:1000px; margin:18px auto 40px; padding:0 16px}
+  .grid{display:grid; gap:14px}
+  @media(min-width:860px){ .grid{grid-template-columns:1.1fr 1fr} }
+  .card{background:linear-gradient(180deg,#0f172a 0%, #0b1225 100%); border:1px solid var(--line); border-radius:14px; padding:16px 16px 12px; box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .card h2{margin:.2rem 0 .8rem; font-size:1.05rem; letter-spacing:.2px}
+  label{display:block; font-size:.92rem; margin:.5rem 0 .3rem; color:#cbd5e1}
+  input, select{width:100%; padding:10px 12px; border-radius:10px; border:1px solid #273249; background:#0b1326; color:var(--text)}
+  input[type="number"]{appearance:textfield}
+  .row{display:grid; grid-template-columns:1fr 120px; gap:10px; align-items:end}
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .inline{display:flex; gap:10px; align-items:center}
+  .muted{color:#94a3b8; font-size:.85rem}
+  .pill{display:inline-block; padding:6px 10px; background:#0d1a33; border:1px solid #1c2740; border-radius:999px; font-size:.8rem; color:#cbd5e1}
+  .btn{display:inline-flex; align-items:center; gap:8px; padding:12px 16px; border-radius:12px; border:1px solid #1f2a45; background:#0f1a33; color:#e6f5ec; cursor:pointer; font-weight:600}
+  .btn.primary{background:linear-gradient(180deg,#1d3b2a,#174d32); border-color:#25503d}
+  .totals{display:grid; gap:10px}
+  .line{display:flex; justify-content:space-between; border-bottom:1px dashed #223056; padding:8px 0}
+  .line:last-child{border-bottom:none}
+  .money{font-variant-numeric:tabular-nums}
+  .total{font-size:1.3rem; color:#d1fae5}
+  .hr{height:1px; background:#1a2543; margin:10px 0}
+  footer{color:#8aa0bd; text-align:center; margin-top:14px; font-size:.85rem}
+  .tiny{font-size:.8rem}
+  .hide{display:none}
 </style>
 </head>
 <body>
-<h1>757 Disposal Cost Calculator</h1>
-<p>This is the updated PWA web app placeholder. (Full HTML omitted here for brevity)</p>
+<header>
+  <h1>757 Disposal Cost Calculator</h1>
+  <p>Apartment clean-outs • Hampton Roads (757) • Fast on-site quoting</p>
+</header>
+
+<div class="container grid">
+  <!-- LEFT: Inputs -->
+  <section class="card">
+    <h2>Job Details</h2>
+    <div class="two">
+      <div style="grid-column:1 / -1">
+        <label>Job address</label>
+        <input id="jobAddr" placeholder="e.g., 901 Maple Ave, Chesapeake, VA 23320" />
+        <div id="zipStatus" class="muted tiny"></div>
+      </div>
+    </div>
+    <div class="two">
+      <div>
+        <label>Use Current Location</label>
+        <button id="locBtn" class="btn">📍 Use GPS</button>
+        <div id="locStatus" class="muted tiny"></div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+    <h2>Rates by Volume</h2>
+    <div class="two">
+      <div>
+        <label>Estimate Mode</label>
+        <select id="mode">
+          <option value="manual">Manual selection</option>
+          <option value="rooms">By rooms</option>
+          <option value="sqft">By square feet</option>
+        </select>
+      </div>
+      <div>
+        <label>Load Size (manual)</label>
+        <select id="volume">
+          <option value="Small">Small (≤5 cu yd)</option>
+          <option value="Medium" selected>Medium (≤10 cu yd)</option>
+          <option value="Large">Large (15–20 cu yd)</option>
+          <option value="XL">Extra-Large (20+ cu yd)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Custom cu yd (XL)</label>
+        <input id="xlYd" type="number" min="0" step="0.5" placeholder="e.g., 24" />
+      </div>
+      <div>
+        <label class="muted">—</label>
+        <span class="pill tiny">Small $125 • Medium $250 • Large $375</span>
+      </div>
+    </div>
+
+    <!-- Rooms -->
+    <div id="roomsBlock" class="hide">
+      <div class="hr"></div>
+      <h2>Rooms</h2>
+      <div class="two">
+        <div><label># Small rooms (≤120 sq ft)</label><input id="rSmall" type="number" min="0" value="0"/></div>
+        <div><label># Medium rooms (121–250)</label><input id="rMed" type="number" min="0" value="0"/></div>
+      </div>
+      <div class="two">
+        <div><label># Large rooms (251–400)</label><input id="rLarge" type="number" min="0" value="0"/></div>
+        <div class="muted" style="display:flex;align-items:end">Uses 2.5 / 5 / 8 yd³ per room</div>
+      </div>
+    </div>
+
+    <!-- Sq Ft -->
+    <div id="sqftBlock" class="hide">
+      <div class="hr"></div>
+      <h2>Square Feet</h2>
+      <div class="two">
+        <div><label>Total square feet</label><input id="sqft" type="number" min="0" value="0"/></div>
+        <div><label>Ceiling height (ft)</label><input id="ceil" type="number" min="6" step="0.5" value="8"/></div>
+      </div>
+      <div class="two">
+        <div><label>Fill factor (0–1)</label><input id="fill" type="number" min="0" max="1" step="0.05" value="0.25"/></div>
+        <div class="muted" style="display:flex;align-items:end">yd³ = (sqft × height ÷ 27) × fill</div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+    <h2>Item Types</h2>
+    <div class="two">
+      <div><label>Bulky items (ea)</label><input id="qtyBulky" type="number" min="0" value="0"/></div>
+      <div><label>Appliances (no CFC) (ea)</label><input id="qtyAppl" type="number" min="0" value="0"/></div>
+    </div>
+    <div class="two">
+      <div><label>Fridge / A/C (CFC) (ea)</label><input id="qtyCFC" type="number" min="0" value="0"/></div>
+      <div><label>Electronics (ea)</label><input id="qtyEwaste" type="number" min="0" value="0"/></div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Construction/Demo debris (cu yd)</label>
+        <input id="cndYd" type="number" min="0" step="0.5" value="0"/>
+        <div class="muted tiny">Converted to tons @ 0.15 ton/cu yd</div>
+      </div>
+      <div>
+        <label>Hazardous/Special (custom)</label>
+        <input id="hazardCustom" type="number" min="0" step="1" placeholder="$"/>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+    <h2>Labor & Access</h2>
+    <div class="two">
+      <div><label>Floors to carry (0=ground)</label><input id="floors" type="number" min="0" value="0"/></div>
+      <div><label>Heavy items (ea)</label><input id="qtyHeavy" type="number" min="0" value="0"/></div>
+    </div>
+    <div class="inline" style="margin-top:8px">
+      <input id="stairsOnly" type="checkbox" />
+      <label for="stairsOnly" style="margin:0">Stairs-only access (+10% labor)</label>
+    </div>
+
+    <div class="hr"></div>
+    <h2>Disposal & Landfill</h2>
+    <div class="inline">
+      <input id="inclDisposal" type="checkbox" checked />
+      <label for="inclDisposal" style="margin:0">Include disposal in base volume (no separate line)</label>
+    </div>
+    <div class="two">
+      <div><label>Overweight estimate (tons)</label><input id="tonsOver" type="number" min="0" step="0.05" value="0"/></div>
+      <div><label>White goods CFC disposal (ea)</label><input id="qtyWG" type="number" min="0" value="0"/></div>
+    </div>
+
+    <div class="hr"></div>
+    <button id="calcBtn" class="btn primary">🧮 Calculate Total</button>
+    <span class="pill">First 15 mi RT free • $1.50/mi after</span>
+  </section>
+
+  <!-- RIGHT: Output -->
+  <section class="card">
+    <h2>Quote Summary</h2>
+    <div id="nearest" class="muted" style="margin-bottom:8px">Nearest transfer station: <span class="pill">—</span></div>
+    <div id="estNote" class="muted tiny" style="margin-bottom:6px"></div>
+
+    <div class="totals" id="breakdown">
+      <div class="line"><div>Volume</div><div class="money">$0.00</div></div>
+      <div class="line"><div>Item surcharges</div><div class="money">$0.00</div></div>
+      <div class="line"><div>Labor & access</div><div class="money">$0.00</div></div>
+      <div class="line"><div>Travel & hauling</div><div class="money">$0.00</div></div>
+      <div class="line"><div>Disposal / landfill</div><div class="money">$0.00</div></div>
+      <div class="line total"><div><strong>Total</strong></div><div class="money"><strong>$0.00</strong></div></div>
+    </div>
+
+    <div class="hr"></div>
+    <footer><p class="tiny">© 757 Clean-Outs — Free estimates • Senior/Military discounts • Same-/Next-day</p></footer>
+  </section>
+</div>
+
+<script>
+/* ===== Admin defaults ===== */
+const RATES = {
+  volume: { Small:125, Medium:250, Large:375, XL:null },
+  bulky: 35, appliance: 40, cfc: 65, electronics: 25,
+  cndPerYd: 40, cndTonPerYd: 0.15,
+  perFloor: 30, heavy: 150, stairsFactor: 0.10,
+  travelFreeMilesRT: 15, travelPerMile: 1.50,
+  tippingPerTon: 78, tippingMin: 20, cndPerTon: 60, whiteGoodsCFCFee: 16
+};
+
+/* Transfer stations (candidates) */
+const STATIONS = [
+  { name:"Chesapeake Transfer Station", address:"901 Hollowell Ln, Chesapeake, VA 23320", lat:36.75359, lon:-76.24620 },
+  { name:"Norfolk Transfer Station", address:"3136 Woodland Ave, Norfolk, VA 23504", lat:36.86950, lon:-76.26370 },
+  { name:"Landstown Transfer Station (Virginia Beach)", address:"1825 Concert Dr, Virginia Beach, VA 23453", lat:36.78260, lon:-76.07580 },
+  { name:"Oceana Transfer Station (Virginia Beach)", address:"2025 Virginia Beach Blvd, Virginia Beach, VA 23454", lat:36.84070, lon:-76.00040 }
+];
+
+/* ZIP centroid map (extend as needed) */
+const ZIPS = {
+  "23320": { lat:36.7600, lon:-76.2400 },
+  "23504": { lat:36.8660, lon:-76.2710 },
+  "23453": { lat:36.7830, lon:-76.0750 },
+  "23454": { lat:36.8390, lon:-76.0000 },
+  "23702": { lat:36.8070, lon:-76.3340 },
+  "23704": { lat:36.8320, lon:-76.3090 }
+};
+
+const $ = s => document.querySelector(s);
+const fmt = n => `$${Number(n).toFixed(2)}`;
+function haversine(a,b,c,d){const R=3958.7613,toRad=x=>x*Math.PI/180,Dlat=toRad(c-a),Dlon=toRad(d-b);const A=Math.sin(Dlat/2)**2+Math.cos(toRad(a))*Math.cos(toRad(c))*Math.sin(Dlon/2)**2;return 2*R*Math.asin(Math.min(1,Math.sqrt(A))); }
+function nearestStation(lat, lon){ let best=null,bd=Infinity; for(const st of STATIONS){const d=haversine(lat,lon,st.lat,st.lon); if(d<bd){bd=d; best={...st, dist:d};}} return best; }
+
+/* Geolocation (GPS) */
+let userLoc = null;
+$("#locBtn").addEventListener("click", () => {
+  $("#locStatus").textContent = "Requesting location…";
+  if(!navigator.geolocation){ $("#locStatus").textContent = "Geolocation not supported."; return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => { userLoc = { lat:pos.coords.latitude, lon:pos.coords.longitude }; $("#locStatus").innerHTML = `Got location ✅ <span class="tiny">(${userLoc.lat.toFixed(5)}, ${userLoc.lon.toFixed(5)})</span>`; updateNearest(); },
+    err => { $("#locStatus").textContent = "Could not get location: " + err.message; },
+    { enableHighAccuracy:true, maximumAge:30000, timeout:12000 }
+  );
+});
+
+/* Address ZIP parsing */
+function parseZip(addr){
+  const m = (addr || "").match(/\b(\d{5})\b/);
+  return m ? m[1] : null;
+}
+function updateNearest(){
+  let src = null;
+  if(userLoc){ src = userLoc; }
+  else {
+    const zip = parseZip($("#jobAddr").value);
+    if(zip){
+      $("#zipStatus").textContent = `ZIP detected: ${zip}`;
+      if(ZIPS[zip]) src = ZIPS[zip];
+      else $("#zipStatus").textContent += " (no centroid on file; travel set to $0)";
+    } else {
+      $("#zipStatus").textContent = "Awaiting ZIP in address…";
+    }
+  }
+
+  let travelCharge = 0, nearestText = "—";
+  if(src){
+    const st = nearestStation(src.lat, src.lon);
+    const rtMiles = st.dist * 2;
+    const billable = Math.max(0, rtMiles - RATES.travelFreeMilesRT);
+    travelCharge = billable * RATES.travelPerMile;
+    nearestText = `${st.name} • ${st.address} • ~${rtMiles.toFixed(1)} mi RT`;
+  } else {
+    nearestText = "Location not set (Use GPS or include ZIP in Job Address).";
+  }
+
+  // Update the travel row display immediately (calc button will recompute anyway)
+  const rows = $("#breakdown").querySelectorAll(".line .money");
+  rows[3].textContent = fmt(travelCharge);
+  $("#nearest").innerHTML = `Nearest transfer station: <span class="pill">${nearestText}</span>`;
+}
+$("#jobAddr").addEventListener("input", updateNearest);
+
+/* Mode UI toggle */
+function updateModeUI(){
+  const m = $("#mode").value;
+  $("#roomsBlock").classList.toggle("hide", m!=="rooms");
+  $("#sqftBlock").classList.toggle("hide", m!=="sqft");
+}
+$("#mode").addEventListener("change", updateModeUI);
+updateModeUI();
+
+/* Calculation */
+$("#calcBtn").addEventListener("click", () => {
+  const mode = $("#mode").value;
+  const manualTier = $("#volume").value;
+  const xlYd = parseFloat($("#xlYd").value || 0);
+  let estNote = "";
+
+  // Determine tier
+  let chosenTier = manualTier, estYards = null;
+  if(mode === "rooms"){
+    const s = parseFloat($("#rSmall").value || 0), m = parseFloat($("#rMed").value || 0), l = parseFloat($("#rLarge").value || 0);
+    estYards = (s*2.5) + (m*5) + (l*8);
+    chosenTier = estYards<=5?"Small":estYards<=10?"Medium":estYards<=20?"Large":"XL";
+    estNote = `Rooms estimate: ~${estYards.toFixed(1)} yd³ → ${chosenTier}`;
+  }else if(mode === "sqft"){
+    const sqft = parseFloat($("#sqft").value || 0), ceil = parseFloat($("#ceil").value || 8), fill = parseFloat($("#fill").value || 0.25);
+    estYards = (sqft * ceil / 27) * fill;
+    chosenTier = estYards<=5?"Small":estYards<=10?"Medium":estYards<=20?"Large":"XL";
+    estNote = `Sq ft estimate: ~${estYards.toFixed(1)} yd³ → ${chosenTier}`;
+  }
+
+  // Volume price
+  let volumePrice = RATES.volume[chosenTier] ?? 0;
+  if(chosenTier === "XL"){
+    const baseXL = 375;
+    const yards = estYards ?? xlYd;
+    const useYards = Math.max(xlYd || 0, yards || 0);
+    const extra = Math.max(0, (useYards - 20));
+    volumePrice = baseXL + extra * 12.5;
+    if(mode !== "manual" && useYards) estNote += ` (pricing XL on ${useYards.toFixed(1)} yd³)`;
+  }
+
+  // Items
+  const itemSurcharges =
+    (parseInt($("#qtyBulky").value||0,10) * RATES.bulky) +
+    (parseInt($("#qtyAppl").value||0,10)  * RATES.appliance) +
+    (parseInt($("#qtyCFC").value||0,10)   * RATES.cfc) +
+    (parseInt($("#qtyEwaste").value||0,10)* RATES.electronics) +
+    (parseFloat($("#cndYd").value||0)     * RATES.cndPerYd) +
+    (parseFloat($("#hazardCustom").value||0) || 0);
+
+  // Labor
+  let labor = (parseInt($("#floors").value||0,10) * RATES.perFloor) + (parseInt($("#qtyHeavy").value||0,10) * RATES.heavy);
+  if($("#stairsOnly").checked) labor *= (1 + RATES.stairsFactor);
+
+  // Travel (prefer GPS, else ZIP centroid)
+  let travelCharge = 0, nearestText = "—";
+  let src = userLoc;
+  if(!src){
+    const zip = parseZip($("#jobAddr").value);
+    if(zip && ZIPS[zip]) src = ZIPS[zip];
+  }
+  if(src){
+    const st = nearestStation(src.lat, src.lon);
+    const rtMiles = st.dist * 2;
+    const billable = Math.max(0, rtMiles - RATES.travelFreeMilesRT);
+    travelCharge = billable * RATES.travelPerMile;
+    nearestText = `${st.name} • ${st.address} • ~${rtMiles.toFixed(1)} mi RT`;
+  } else {
+    nearestText = "Location not set (Use GPS or include ZIP in Job Address).";
+  }
+
+  // Disposal
+  let disposal = 0;
+  if(!$("#inclDisposal").checked){
+    const tonsOver = parseFloat($("#tonsOver").value||0);
+    if(tonsOver>0) disposal += Math.max(RATES.tippingMin, RATES.tippingPerTon*tonsOver);
+    const cndYd = parseFloat($("#cndYd").value||0);
+    const cndTons = cndYd * RATES.cndTonPerYd;
+    if(cndTons>0) disposal += RATES.cndPerTon * cndTons;
+    const qtyWG = parseInt($("#qtyWG").value||0,10);
+    disposal += qtyWG * RATES.whiteGoodsCFCFee;
+  }
+
+  // Total
+  const total = volumePrice + itemSurcharges + labor + travelCharge + disposal;
+
+  // Render
+  const rows = $("#breakdown").querySelectorAll(".line .money");
+  rows[0].textContent = fmt(volumePrice);
+  rows[1].textContent = fmt(itemSurcharges);
+  rows[2].textContent = fmt(labor);
+  rows[3].textContent = fmt(travelCharge);
+  rows[4].textContent = fmt(disposal);
+  rows[5].textContent = fmt(total);
+
+  $("#nearest").innerHTML = `Nearest transfer station: <span class="pill">${nearestText}</span>`;
+  $("#estNote").textContent = estNote;
+});
+
+// Prime nearest updates as user types address
+$("#jobAddr").addEventListener("input", updateNearest);
+</script>
 </body>
 </html>
+>
